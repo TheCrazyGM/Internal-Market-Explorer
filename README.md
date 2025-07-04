@@ -11,7 +11,7 @@ Copy the files inside "app" folder to the server root.
 1. Clone Repo
 
 ```
-git clone -b main "git@github.com:<...>.git" .
+git clone -b main "git@github.com:TheCrazyGM/Internal-Market-Explorer.git" .
 ```
 
 2. Run local server (eg. python3)

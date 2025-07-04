@@ -38,6 +38,7 @@
      </div>
     <div ref="chartRef0" style="height:1100px;"></div>
     <div v-if="sortedArray">
+        <div style="margin:3px;"><b>Filter:</b> <input type="text" v-model="filterName" style="margin-right:15px;" placeholder="Enter name"/></div>
         <div class="flex">   
             <div class="border">
                 <table class="table">
@@ -47,9 +48,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                <tr v-for="item in sortedArray"> 
-                    <td>{{item.name}}</td> <td>{{item.hbd.toFixed(3)+' / '+item.hive.toFixed(3)}}</td>
-                </tr>
+                <template v-for="item in sortedArray">
+                    <tr v-if="passesFilter(item.name,filterName)"> 
+                        <td>{{item.name}}</td> <td>{{item.hbd.toFixed(3)+' / '+item.hive.toFixed(3)}}</td>
+                    </tr>
+                </template>
                 </tbody>
                 </table>
             </div>
@@ -61,14 +64,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                <tr v-for="trade in sortedTrades"> 
-                    <td :title="trade.date">{{toSimpleDate(trade.date)}}</td>
-                    <td>{{trade.maker}}</td> 
-                    <td>{{trade.taker}}</td> 
-                    <td :class="isHiveSale(trade)?'tradeSell':'tradeBuy'"> {{hivePrice(trade)}}</td>
-                    <td>{{tradeHive(trade)}}</td>
-                    <td>{{tradeHbd(trade)}}</td>
-                </tr>
+                <template v-for="trade in sortedTrades">
+                    <tr v-if="passesFilter(trade.maker,filterName)||passesFilter(trade.taker,filterName)"> 
+                        <td :title="trade.date">{{toSimpleDate(trade.date)}}</td>
+                        <td>{{trade.maker}}</td> 
+                        <td>{{trade.taker}}</td> 
+                        <td :class="isHiveSale(trade)?'tradeSell':'tradeBuy'"> {{hivePrice(trade)}}</td>
+                        <td>{{tradeHive(trade)}}</td>
+                        <td>{{tradeHbd(trade)}}</td>
+                    </tr>
+                </template>
                 </tbody>
                 </table>
             </div>
@@ -87,11 +92,18 @@ const { AgCharts } = agCharts;
 const loadFrom = ref("");
 const loadTo = ref("");
 
+function passesFilter(name, filter) {
+    if(filter == null) return true;
+    filter = filter.trim();
+    return name.indexOf(filter) !== -1;
+}
+
 var chartRef = useTemplateRef("chartRef0");
 var msg = ref(null);
 var sortedArray = ref(null);
 var sortedTrades = ref(null);
 var showLoadButton = ref(true);
+var filterName = ref("");
 
 function isHiveSale(item) {
     var hbdCurrent = item.current_pays.nai === "@@000000013";
@@ -403,6 +415,7 @@ onMounted(async ()=>{
     max-width:950px;
     width: 950px;
     background-color: #f9f9f9;
+    margin-bottom: 450px;
 }
 .table {
     overflow-x: auto;
