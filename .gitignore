@@ -3,3 +3,4 @@ dist/
 *.local
 .env
 pollen-improvement.md
+trade-histories.md
