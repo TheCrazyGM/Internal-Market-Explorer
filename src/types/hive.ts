@@ -80,3 +80,48 @@ export interface NormalisedOrder {
   expiration: string
   isBid: boolean
 }
+
+// ── condenser_api.get_account_history / fill_order ──────────────────────────
+
+export interface FillOrderOp {
+  current_owner:   string   // taker
+  current_orderid: number
+  current_pays:    string   // human-readable e.g. "602.975 HIVE"
+  open_owner:      string   // maker
+  open_orderid:    number
+  open_pays:       string   // human-readable e.g. "29.787 HBD"
+}
+
+export interface AccountHistoryEntry {
+  op:         ['fill_order', FillOrderOp]
+  block:      number
+  trx_id:     string
+  op_in_trx:  number
+  timestamp:  string   // ISO-8601, no Z
+  virtual_op: boolean
+}
+
+export type AccountHistoryResult = [number, AccountHistoryEntry][]
+
+// ── Processed fill for display / P&L ────────────────────────────────────────
+
+export interface AssetAmount {
+  amount: number
+  symbol: 'HIVE' | 'HBD'
+}
+
+export interface AccountFill {
+  timestamp: string
+  trx_id:    string
+  role:      'maker' | 'taker'
+  paid:      AssetAmount
+  received:  AssetAmount
+  price:     number   // HBD per HIVE
+}
+
+export interface AccountFillsData {
+  fills:       AccountFill[]
+  netHive:     number   // positive = net HIVE gained, negative = net HIVE spent
+  netHbd:      number   // positive = net HBD gained, negative = net HBD spent
+  totalTrades: number
+}

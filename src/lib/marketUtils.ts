@@ -1,4 +1,4 @@
-import type { Trade, MarketData, UserVolume } from '../types/hive'
+import type { Trade, MarketData, UserVolume, AssetAmount } from '../types/hive'
 
 export const HBD_NAI  = '@@000000013'
 export const HIVE_NAI = '@@000000021'
@@ -22,6 +22,12 @@ export function toMarketData(users: Record<string, [number, number]>, trades: Tr
     .map(([name, [hive, hbd]]) => ({ name, hive, hbd }))
     .sort((a, b) => b.hbd - a.hbd)
   return { users: userList, trades }
+}
+
+/** Parse a human-readable Hive asset string e.g. "602.975 HIVE" or "29.787 HBD" */
+export function parseAsset(s: string): AssetAmount {
+  const [amount, symbol] = s.split(' ')
+  return { amount: Number(amount), symbol: symbol as 'HIVE' | 'HBD' }
 }
 
 export function toTime(t: string | number): number {

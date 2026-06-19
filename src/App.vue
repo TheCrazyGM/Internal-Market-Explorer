@@ -37,6 +37,7 @@
         @toggle-refresh="autoRefresh = !autoRefresh"
       />
       <OrderBook v-else-if="activeTab === 'orderbook'" />
+      <ProfitTracker v-else-if="activeTab === 'profit'" />
     </main>
   </div>
 </template>
@@ -45,6 +46,7 @@
 import { ref } from 'vue'
 import TradeVolume from './components/TradeVolume.vue'
 import OrderBook from './components/OrderBook.vue'
+import ProfitTracker from './components/ProfitTracker.vue'
 import { toTime } from './lib/marketUtils'
 import type { DateRange } from './composables/useTradeHistory'
 
@@ -52,6 +54,7 @@ const tabs = [
   { id: 'volume',     label: 'Trade Volume' },
   { id: 'orderbook',  label: 'Order Book' },
   { id: 'price',      label: 'Price History' },
+  { id: 'profit',     label: 'Profit Tracker' },
 ] as const
 
 type TabId = typeof tabs[number]['id']
