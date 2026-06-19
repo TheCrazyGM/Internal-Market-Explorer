@@ -3,10 +3,34 @@ import { useQuery } from '@tanstack/vue-query'
 import { nodePool } from '../lib/nodePool'
 import { parseAsset } from '../lib/marketUtils'
 import type { Ref } from 'vue'
-import type { AccountHistoryResult, AccountFill, AccountFillsData } from '../types/hive'
+import type { AccountHistoryResult, AccountFill, AccountFillsData, FillOrderOp } from '../types/hive'
 
-// fill_order virtual op bitmask: bit 57 = 2^57 (exactly representable in IEEE 754)
-const FILL_ORDER_FILTER = 2 ** 57
+const BATCH_SIZE     = 1000
+const FILL_ORDER_LOW = 0x200000000000000  // bit 57 of operation_filter_low (2^57)
+
+function parseBatch(account: string, batch: AccountHistoryResult): AccountFill[] {
+  const fills: AccountFill[] = []
+  for (const [, entry] of batch) {
+    if (entry.op[0] !== 'fill_order') continue
+    const op = entry.op[1] as FillOrderOp
+
+    const isTaker  = op.current_owner === account
+    const paid     = parseAsset(isTaker ? op.current_pays : op.open_pays)
+    const received = parseAsset(isTaker ? op.open_pays    : op.current_pays)
+    const hive     = received.symbol === 'HIVE' ? received.amount : paid.amount
+    const hbd      = received.symbol === 'HBD'  ? received.amount : paid.amount
+
+    fills.push({
+      timestamp: entry.timestamp,
+      trx_id:    entry.trx_id,
+      role:      isTaker ? 'taker' : 'maker',
+      paid,
+      received,
+      price: hbd / hive,
+    })
+  }
+  return fills
+}
 
 async function fetchAccountFills(
   account: string,
@@ -16,47 +40,33 @@ async function fetchAccountFills(
   progress.value = { current: 0, total: pages }
   await nodePool.init()
 
-  // Sequential fetch: each page returns up to 1000 fill_order ops (server-filtered).
-  // Page N's start index depends on the lowest index returned by page N-1,
-  // so pages cannot be parallelised. Node pool still provides failover.
+  const fetchPage = (start: number) => {
+    console.log('[fills] filter JSON:', JSON.stringify(FILL_ORDER_LOW))
+    return nodePool.call<AccountHistoryResult>(
+      'condenser_api', 'get_account_history',
+      [account, start, BATCH_SIZE, FILL_ORDER_LOW, 0]
+    )
+  }
+
+  // Sequential: each page's start index depends on the previous page's lowest index.
+  // With server-side filter, a page of 1000 fills can span thousands of raw history
+  // indices, so start positions cannot be pre-computed for parallel fetching.
   const fills: AccountFill[] = []
   let start = -1
 
   for (let page = 0; page < pages; page++) {
-    const batch = await nodePool.call<AccountHistoryResult>(
-      'condenser_api', 'get_account_history',
-      [account, start, 1000, FILL_ORDER_FILTER, 0]
-    )
-
+    const batch = await fetchPage(start)
     progress.value = { current: page + 1, total: pages }
 
-    if (!batch.length) break
-
-    for (const [, entry] of batch) {
-      const op = entry.op[1]
-
-      const isTaker = op.current_owner === account
-      const paid     = parseAsset(isTaker ? op.current_pays : op.open_pays)
-      const received = parseAsset(isTaker ? op.open_pays    : op.current_pays)
-
-      const hive = received.symbol === 'HIVE' ? received.amount : paid.amount
-      const hbd  = received.symbol === 'HBD'  ? received.amount : paid.amount
-
-      fills.push({
-        timestamp: entry.timestamp,
-        trx_id:    entry.trx_id,
-        role:      isTaker ? 'taker' : 'maker',
-        paid,
-        received,
-        price: hbd / hive,
-      })
-    }
-
-    if (batch.length < 1000) break
-    start = batch[0][0] - 1  // lowest index in this page; step back for next page
+    if (!batch.length) { console.log('[fills] page', page, 'empty batch — break'); break }
+    console.log('[fills] page', page, 'batch length:', batch.length, 'first item:', batch[0])
+    const parsed = parseBatch(account, batch)
+    console.log('[fills] page', page, 'parsed fills:', parsed.length)
+    fills.push(...parsed)
+    if (batch.length < BATCH_SIZE) break
+    start = batch[0][0] - 1
   }
 
-  // Already newest-first within each page; reverse so overall order is newest-first
   fills.reverse()
 
   let netHive = 0

@@ -93,7 +93,7 @@ export interface FillOrderOp {
 }
 
 export interface AccountHistoryEntry {
-  op:         ['fill_order', FillOrderOp]
+  op:         [string, unknown]
   block:      number
   trx_id:     string
   op_in_trx:  number

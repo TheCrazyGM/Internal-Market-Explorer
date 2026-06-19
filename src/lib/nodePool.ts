@@ -21,13 +21,9 @@ async function fetchNectarNodes(): Promise<string[]> {
     const [account] = await bootstrap.call<[{ json_metadata: string }]>(
       'condenser_api', 'get_accounts', [['nectarflower']]
     )
-    const meta = JSON.parse(account.json_metadata) as {
-      nodes: string[]
-      failing_nodes?: Record<string, string>
-    }
-    const dead = new Set(Object.keys(meta.failing_nodes ?? {}))
-    const live = (meta.nodes ?? []).filter(url => !dead.has(url))
-    return live.length ? live : FALLBACK_NODES
+    const meta = JSON.parse(account.json_metadata) as { nodes: string[] }
+    const nodes = meta.nodes ?? []
+    return nodes.length ? nodes : FALLBACK_NODES
   } catch {
     return FALLBACK_NODES
   }
