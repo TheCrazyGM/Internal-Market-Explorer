@@ -6,7 +6,7 @@
         {{ autoRefresh ? 'Stop Auto Refresh' : 'Auto Refresh' }}
       </button>
       <div class="donate">
-        <a href="https://thecrazygm.com/hivetools/utility/tipjar/open.mithril/5/hbd/thank%20you">
+        <a href="https://tools.crypto-dreamr.com/tipjar/open.mithril/5.000/hive/Thank%20you">
           Donate to Open.Mithril
         </a>
       </div>
