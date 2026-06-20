@@ -1,14 +1,15 @@
 import { ref, computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { nodePool } from '../lib/nodePool'
+import { OP, opFilter } from '@srbde/pollen'
+import type { FillOrderOp } from '@srbde/pollen'
+import { client } from '../lib/hiveClient'
 import { parseAsset } from '../lib/marketUtils'
 import type { Ref } from 'vue'
-import type { AccountHistoryResult, AccountFill, AccountFillsData, FillOrderOp } from '../types/hive'
+import type { AccountFill, AccountFillsData } from '../types/hive'
 
-const BATCH_SIZE     = 1000
-const FILL_ORDER_LOW = 0x200000000000000  // bit 57 of operation_filter_low (2^57)
+const BATCH_SIZE = 1000
 
-function parseBatch(account: string, batch: AccountHistoryResult): AccountFill[] {
+function parseBatch(account: string, batch: [number, { op: [string, unknown]; trx_id: string; timestamp: string }][]): AccountFill[] {
   const fills: AccountFill[] = []
   for (const [, entry] of batch) {
     if (entry.op[0] !== 'fill_order') continue
@@ -38,36 +39,22 @@ async function fetchAccountFills(
   progress: Ref<{ current: number; total: number }>,
 ): Promise<AccountFillsData> {
   progress.value = { current: 0, total: pages }
-  await nodePool.init()
 
-  const fetchPage = (start: number) => {
-    console.log('[fills] filter JSON:', JSON.stringify(FILL_ORDER_LOW))
-    return nodePool.call<AccountHistoryResult>(
-      'condenser_api', 'get_account_history',
-      [account, start, BATCH_SIZE, FILL_ORDER_LOW, 0]
-    )
-  }
-
-  // Sequential: each page's start index depends on the previous page's lowest index.
-  // With server-side filter, a page of 1000 fills can span thousands of raw history
-  // indices, so start positions cannot be pre-computed for parallel fetching.
+  const filter = opFilter(OP.fill_order)
   const fills: AccountFill[] = []
   let start = -1
 
   for (let page = 0; page < pages; page++) {
-    const batch = await fetchPage(start)
+    const batch = await client.database.getAccountHistory(account, start, BATCH_SIZE, filter)
     progress.value = { current: page + 1, total: pages }
 
-    if (!batch.length) { console.log('[fills] page', page, 'empty batch — break'); break }
-    console.log('[fills] page', page, 'batch length:', batch.length, 'first item:', batch[0])
-    const parsed = parseBatch(account, batch)
-    console.log('[fills] page', page, 'parsed fills:', parsed.length)
-    fills.push(...parsed)
+    if (!batch.length) break
+    const pageFills = parseBatch(account, batch)
+    pageFills.reverse()        // newest-first within this page
+    fills.push(...pageFills)   // page 1 (newest) then page 2 (older), etc.
     if (batch.length < BATCH_SIZE) break
     start = batch[0][0] - 1
   }
-
-  fills.reverse()
 
   let netHive = 0
   let netHbd  = 0

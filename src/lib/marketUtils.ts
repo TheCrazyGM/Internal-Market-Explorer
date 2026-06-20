@@ -1,7 +1,8 @@
-import type { Trade, MarketData, UserVolume, AssetAmount } from '../types/hive'
+import { HBD_NAI, HIVE_NAI } from '@srbde/pollen'
+import type { Trade } from '@srbde/pollen'
+import type { MarketData, UserVolume, AssetAmount } from '../types/hive'
 
-export const HBD_NAI  = '@@000000013'
-export const HIVE_NAI = '@@000000021'
+export { HBD_NAI, HIVE_NAI }
 
 export function accumulateTrades(trades: Trade[]): { users: Record<string, [number, number]>; tradeList: Trade[] } {
   const users: Record<string, [number, number]> = {}

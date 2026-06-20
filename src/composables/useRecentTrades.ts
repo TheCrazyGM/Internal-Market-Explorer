@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/vue-query'
 import { client } from '../lib/hiveClient'
 import { accumulateTrades, toMarketData } from '../lib/marketUtils'
-import type { GetRecentTradesResponse } from '../types/hive'
 
 async function fetchRecentTrades() {
-  const res = await client.call<GetRecentTradesResponse>(
-    'market_history_api', 'get_recent_trades', { limit: 1000 }
-  )
+  const res = await client.market.getRecentTrades({ limit: 1000 })
   const { users, tradeList } = accumulateTrades(res.trades ?? [])
   return toMarketData(users, tradeList)
 }

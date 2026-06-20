@@ -41,9 +41,29 @@
           {{ fmtNet(data.netHbd) }} HBD
         </span>
       </div>
+      <div v-if="traderType" class="stat">
+        <span class="label">Classification</span>
+        <span class="value trader-type" :class="traderType.cls">{{ traderType.label }}</span>
+      </div>
       <div class="stat">
-        <span class="label">Avg Price</span>
-        <span class="value">{{ avgPrice }}</span>
+        <span class="label">Buys / Sells</span>
+        <span class="value">{{ stats?.buyCount }} / {{ stats?.sellCount }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">VWAP</span>
+        <span class="value">{{ stats?.vwap }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">Mean Fill Price</span>
+        <span class="value">{{ stats?.meanFillPrice }}</span>
+      </div>
+      <div v-if="stats?.buyVwap !== null" class="stat">
+        <span class="label">Buy VWAP</span>
+        <span class="value">{{ stats?.buyVwap }}</span>
+      </div>
+      <div v-if="stats?.sellVwap !== null" class="stat">
+        <span class="label">Sell VWAP</span>
+        <span class="value">{{ stats?.sellVwap }}</span>
       </div>
     </div>
 
@@ -120,11 +140,46 @@ const pageEntries = computed(() => {
   return fills.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE)
 })
 
-const avgPrice = computed(() => {
+const traderType = computed(() => {
+  const d = data.value
+  if (!d) return null
+  const hive = d.netHive >= 0
+  const hbd  = d.netHbd  >= 0
+  if ( hive && !hbd) return { label: 'Net Accumulator',   cls: 'type-accum'  }
+  if (!hive &&  hbd) return { label: 'Net Seller',        cls: 'type-seller' }
+  if ( hive &&  hbd) return { label: 'Profitable Trader', cls: 'type-profit' }
+  return                     { label: 'Losing Trader',    cls: 'type-loss'   }
+})
+
+const stats = computed(() => {
   const fills = data.value?.fills
-  if (!fills?.length) return '—'
-  const avg = fills.reduce((s, f) => s + f.price, 0) / fills.length
-  return avg.toFixed(5)
+  if (!fills?.length) return null
+
+  let buyCount = 0, sellCount = 0
+  let totalHive = 0, totalHbd = 0
+  let buyHive = 0, buyHbd = 0
+  let sellHive = 0, sellHbd = 0
+  let sumPrice = 0
+
+  for (const f of fills) {
+    sumPrice += f.price
+    if (f.received.symbol === 'HIVE') {
+      buyCount++;  buyHive += f.received.amount;  buyHbd  += f.paid.amount
+    } else {
+      sellCount++; sellHive += f.paid.amount;      sellHbd += f.received.amount
+    }
+    totalHive += f.received.symbol === 'HIVE' ? f.received.amount : f.paid.amount
+    totalHbd  += f.received.symbol === 'HBD'  ? f.received.amount : f.paid.amount
+  }
+
+  return {
+    buyCount,
+    sellCount,
+    vwap:          (totalHive > 0 ? totalHbd  / totalHive  : 0).toFixed(5),
+    meanFillPrice: (sumPrice / fills.length).toFixed(5),
+    buyVwap:       buyHive  > 0 ? (buyHbd  / buyHive ).toFixed(5) : null,
+    sellVwap:      sellHive > 0 ? (sellHbd / sellHive).toFixed(5) : null,
+  }
 })
 
 function fmtNet(n: number): string {
@@ -202,6 +257,12 @@ function fmtTime(ts: string): string {
 .value { font-weight: bold; color: #333; }
 .pos { color: #00a050; }
 .neg { color: #dc1e1e; }
+
+.trader-type { font-size: 0.78rem; padding: 1px 6px; border-radius: 3px; display: inline-block; }
+.type-accum  { background: #e6f4ea; color: #1a7a3a; }
+.type-seller { background: #fdecea; color: #b71c1c; }
+.type-profit { background: #e8f5e9; color: #1b5e20; font-weight: 900; }
+.type-loss   { background: #fce4e4; color: #7f0000; }
 
 .table-wrap { overflow-x: auto; }
 

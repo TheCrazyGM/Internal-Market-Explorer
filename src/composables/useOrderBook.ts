@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/vue-query'
 import { client } from '../lib/hiveClient'
-import { HBD_NAI, HIVE_NAI } from '../lib/marketUtils'
-import type { ListLimitOrdersResponse, LimitOrder, NormalisedOrder } from '../types/hive'
+import { HBD_NAI, HIVE_NAI } from '@srbde/pollen'
+import type { LimitOrder } from '@srbde/pollen'
+import type { NormalisedOrder } from '../types/hive'
 
 export interface OrderBook {
   bids: NormalisedOrder[]   // sorted highest→lowest price
@@ -34,12 +35,7 @@ async function fetchAllLimitOrders(): Promise<LimitOrder[]> {
   let start: [string, number] = ['', 0]
 
   while (true) {
-    const res = await client.call<ListLimitOrdersResponse>(
-      'database_api', 'list_limit_orders',
-      { start, limit: 1000, order: 'by_account' }
-    )
-    const batch = res.orders ?? []
-    // skip the cursor entry on subsequent pages (it was the last of previous batch)
+    const { orders: batch } = await client.database.listLimitOrders({ start, limit: 1000, order: 'by_account' })
     const slice = all.length === 0 ? batch : batch.slice(1)
     all.push(...slice)
     if (batch.length < 1000) break

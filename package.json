@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@srbde/pollen": "^1.0.3",
+    "@srbde/pollen": "^1.0.4",
     "@tanstack/vue-query": "^5.0.0",
     "chart.js": "^4.5.1",
     "vue": "^3.5.0",

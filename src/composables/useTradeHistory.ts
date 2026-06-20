@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/vue-query'
 import { client } from '../lib/hiveClient'
 import { accumulateTrades, toMarketData } from '../lib/marketUtils'
 import type { Ref } from 'vue'
-import type { GetTradeHistoryResponse } from '../types/hive'
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toISOString().substring(0, 19)
@@ -19,10 +18,11 @@ async function fetchTradeHistory(startTi: number, endTi: number) {
   let cursor = startTi
 
   while (true) {
-    const res = await client.call<GetTradeHistoryResponse>(
-      'market_history_api', 'get_trade_history',
-      { limit: 1000, start: formatDate(cursor), end: formatDate(endTi) }
-    )
+    const res = await client.market.getTradeHistory({
+      limit: 1000,
+      start: formatDate(cursor),
+      end:   formatDate(endTi),
+    })
     const batch = res.trades ?? []
     if (batch.length === 0) break
 
