@@ -8,6 +8,7 @@ import type { Ref } from 'vue'
 import type { AccountFill, AccountFillsData } from '../types/hive'
 
 const BATCH_SIZE = 1000
+export const MAX_ACCOUNT_HISTORY_PAGES = 200
 
 function parseBatch(account: string, batch: [number, { op: [string, unknown]; trx_id: string; timestamp: string }][]): AccountFill[] {
   const fills: AccountFill[] = []
@@ -38,15 +39,17 @@ async function fetchAccountFills(
   pages: number,
   progress: Ref<{ current: number; total: number }>,
 ): Promise<AccountFillsData> {
-  progress.value = { current: 0, total: pages }
+  const requestedPages = Number.isFinite(pages) ? Math.trunc(pages) : 1
+  const safePages = Math.min(MAX_ACCOUNT_HISTORY_PAGES, Math.max(1, requestedPages))
+  progress.value = { current: 0, total: safePages }
 
   const filter = opFilter(OP.fill_order)
   const fills: AccountFill[] = []
   let start = -1
 
-  for (let page = 0; page < pages; page++) {
+  for (let page = 0; page < safePages; page++) {
     const batch = await client.database.getAccountHistory(account, start, BATCH_SIZE, filter)
-    progress.value = { current: page + 1, total: pages }
+    progress.value = { current: page + 1, total: safePages }
 
     if (!batch.length) break
     const pageFills = parseBatch(account, batch)

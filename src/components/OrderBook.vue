@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS, LineElement, PointElement,
@@ -240,8 +240,15 @@ const PAGE_SIZE = 25
 const bidPage = ref(0)
 const askPage = ref(0)
 
-const bidPageCount = computed(() => Math.ceil((data.value?.bids.length ?? 0) / PAGE_SIZE))
-const askPageCount = computed(() => Math.ceil((data.value?.asks.length ?? 0) / PAGE_SIZE))
+const bidPageCount = computed(() => Math.max(1, Math.ceil((data.value?.bids.length ?? 0) / PAGE_SIZE)))
+const askPageCount = computed(() => Math.max(1, Math.ceil((data.value?.asks.length ?? 0) / PAGE_SIZE)))
+
+watch(bidPageCount, count => {
+  bidPage.value = Math.min(bidPage.value, count - 1)
+})
+watch(askPageCount, count => {
+  askPage.value = Math.min(askPage.value, count - 1)
+})
 
 const bidPage_entries = computed(() =>
   data.value?.bids.slice(bidPage.value * PAGE_SIZE, (bidPage.value + 1) * PAGE_SIZE) ?? []

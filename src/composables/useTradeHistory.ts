@@ -34,10 +34,12 @@ async function fetchTradeHistory(startTi: number, endTi: number) {
     }
     allTrades.push(...batch)
 
+    let maxBatchTimestamp = cursor
     for (const item of batch) {
-      cursor = Math.max(cursor, new Date(item.date + 'Z').getTime())
+      maxBatchTimestamp = Math.max(maxBatchTimestamp, new Date(item.date + 'Z').getTime())
     }
-    cursor++
+    // The API accepts second-precision timestamps, so advance by a full second.
+    cursor = maxBatchTimestamp + 1_000
 
     if (batch.length < 1000 || cursor >= endTi) break
     await delay(250)

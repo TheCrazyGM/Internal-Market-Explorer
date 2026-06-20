@@ -10,7 +10,13 @@
       />
       <label class="pages-label">
         Pages
-        <input v-model.number="pagesInput" type="number" min="1" max="9999" class="pages-input" />
+        <input
+          v-model.number="pagesInput"
+          type="number"
+          min="1"
+          :max="MAX_ACCOUNT_HISTORY_PAGES"
+          class="pages-input"
+        />
       </label>
       <button class="btn-load" :disabled="!accountInput.trim() || isFetching" @click="load">
         Load
@@ -111,7 +117,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useAccountFills } from '../composables/useAccountFills'
+import {
+  MAX_ACCOUNT_HISTORY_PAGES,
+  useAccountFills,
+} from '../composables/useAccountFills'
 
 const PAGE_SIZE = 50
 
@@ -131,6 +140,9 @@ watch(params, () => { page.value = 0 })
 function load() {
   const a = accountInput.value.trim()
   if (!a) return
+  const rawPages = Number(pagesInput.value)
+  const pages = Number.isFinite(rawPages) ? Math.trunc(rawPages) : 1
+  pagesInput.value = Math.min(MAX_ACCOUNT_HISTORY_PAGES, Math.max(1, pages))
   params.value = { account: a, pages: pagesInput.value }
 }
 

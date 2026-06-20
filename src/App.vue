@@ -15,6 +15,7 @@
         </div>
         <button class="btn-load" @click="submitDateRange">Load</button>
         <button class="btn-recent" @click="clearDateRange">Recent trades</button>
+        <span v-if="dateError" class="date-error">{{ dateError }}</span>
       </div>
 
       <nav class="tab-nav">
@@ -53,7 +54,6 @@ import type { DateRange } from './composables/useTradeHistory'
 const tabs = [
   { id: 'volume',     label: 'Trade Volume' },
   { id: 'orderbook',  label: 'Order Book' },
-  { id: 'price',      label: 'Price History' },
   { id: 'profit',     label: 'Profit Tracker' },
 ] as const
 
@@ -66,21 +66,35 @@ const loadFrom   = ref('')
 const loadTo     = ref('')
 const dateRange  = ref<DateRange | null>(null)
 const autoRefresh = ref(false)
+const dateError = ref('')
 
 function submitDateRange() {
   const strFrom = loadFrom.value.trim()
   if (!strFrom) return
   const strTo = loadTo.value.trim()
-  dateRange.value = {
-    from: toTime(strFrom),
-    to: strTo ? toTime(strTo) : Date.now() + 86_400_000,
+
+  const parseTime = (value: string) => value.toLowerCase() === 'now' ? Date.now() : toTime(value)
+  const from = parseTime(strFrom)
+  const to = strTo ? parseTime(strTo) : Date.now()
+
+  if (!Number.isFinite(from) || !Number.isFinite(to)) {
+    dateError.value = 'Enter a valid date or relative time such as 1d, 6h, or now.'
+    return
   }
+  if (from > to) {
+    dateError.value = 'The start of the range must be before the end.'
+    return
+  }
+
+  dateError.value = ''
+  dateRange.value = { from, to }
 }
 
 function clearDateRange() {
   loadFrom.value = ''
   loadTo.value   = ''
   dateRange.value = null
+  dateError.value = ''
 }
 </script>
 
@@ -160,6 +174,7 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #f4f4f4; }
 
 .btn-load:hover    { background: #c0006a; }
 .btn-recent:hover  { background: #e0e0e0; }
+.date-error { color: #b71c1c; font-size: 0.78rem; }
 
 .tab-nav {
   display: flex;
